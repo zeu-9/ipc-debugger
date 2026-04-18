@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>IPC Debugger — CSE-316 CA2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════
+       LANDING SCREEN
+  ══════════════════════════════════════ -->
+  <div id="landing" class="landing">
+    <div class="landing-inner">
+      <div class="landing-logo">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect x="2" y="2" width="16" height="16" rx="3" fill="#5ba4f5" opacity=".9"/>
+          <rect x="22" y="2" width="16" height="16" rx="3" fill="#5ba4f5" opacity=".45"/>
+          <rect x="2" y="22" width="16" height="16" rx="3" fill="#5ba4f5" opacity=".45"/>
+          <rect x="22" y="22" width="16" height="16" rx="3" fill="#5ba4f5" opacity=".9"/>
+        </svg>
+      </div>
+      <h1 class="landing-title">IPC Debugger</h1>
+      <p class="landing-desc">Inter-Process Communication Simulation Debugger</p>
+      <p class="landing-badge">CSE-316 CA2 &nbsp;·&nbsp; Simulation-Based Tool</p>
+
+      <div class="landing-notice">
+        <span class="notice-icon">i</span>
+        <span>This is a <strong>simulation-based</strong> debugger. It models OS-level IPC (pipes, message queues, shared memory) in JavaScript — not actual POSIX calls. All deadlock detection, race condition analysis, and synchronization warnings are algorithm-driven simulations.</span>
+      </div>
+
+      <div class="mode-cards">
+        <div class="mode-card" id="card-auto" onclick="launchMode('auto')">
+          <div class="mc-icon mc-icon-auto">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+          </div>
+          <div class="mc-body">
+            <div class="mc-title">Automatic Mode</div>
+            <div class="mc-sub">Algorithm-driven analysis with real-time auto-detection of deadlocks, race conditions, mutex contention, bottlenecks and synchronization issues — no manual triggers needed.</div>
+            <ul class="mc-features">
+              <li>Auto deadlock detection (Banker's algorithm)</li>
+              <li>Race condition &amp; synchronization warnings</li>
+              <li>Semaphore / mutex visualization</li>
+              <li>Throughput &amp; bottleneck analysis</li>
+              <li>Improper sync detection</li>
+            </ul>
+          </div>
+          <div class="mc-cta">Launch Automatic <span>→</span></div>
+        </div>
+
+        <div class="mode-card" id="card-manual" onclick="launchMode('manual')">
+          <div class="mc-icon mc-icon-manual">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <div class="mc-body">
+            <div class="mc-title">Manual Mode</div>
+            <div class="mc-sub">Full control over all IPC parameters. Manually inject faults, configure synchronization primitives, and observe how each decision affects the system.</div>
+            <ul class="mc-features">
+              <li>Manual deadlock / bottleneck injection</li>
+              <li>Configure mutex &amp; semaphore counts</li>
+              <li>Adjust producer/consumer rates</li>
+              <li>Step-by-step execution control</li>
+              <li>Custom IPC buffer sizes</li>
+            </ul>
+          </div>
+          <div class="mc-cta">Launch Manual <span>→</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       MAIN APP
+  ══════════════════════════════════════ -->
+  <div id="app" class="app hidden">
+
+    <!-- RAIL -->
+    <header class="rail">
+      <div class="rail-left">
+        <button class="btn btn-ghost btn-xs" onclick="goHome()" title="Back to home">← home</button>
+        <div class="logo-mark">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor" opacity=".9"/>
+            <rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity=".45"/>
+            <rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor" opacity=".45"/>
+            <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity=".9"/>
+          </svg>
+        </div>
+        <span class="rail-title">IPC Debugger</span>
+        <span class="rail-sep">/</span>
+        <span class="rail-sub" id="mode-badge">auto</span>
+      </div>
+
+      <div class="rail-controls">
+        <div class="ctl-group">
+          <label class="ctl-lbl">ipc mode</label>
+          <select id="mode-sel" class="ctl-select" onchange="changeMode(this.value)">
+            <option value="pipe">pipe</option>
+            <option value="msgq">msg_queue</option>
+            <option value="shm">shared_mem</option>
+          </select>
+        </div>
+        <div class="ctl-group">
+          <label class="ctl-lbl">procs</label>
+          <select id="proc-count" class="ctl-select" onchange="rebuildProcs(this.value)">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+          </select>
+        </div>
+        <div class="ctl-group ctl-slider">
+          <label class="ctl-lbl">speed</label>
+          <input type="range" id="speed-sl" min="200" max="2000" value="700" step="100" oninput="setSpeed(this.value)"/>
+          <span class="ctl-val" id="speed-lbl">0.7s</span>
+        </div>
+        <!-- Manual-only controls -->
+        <div id="manual-controls" class="ctl-group hidden">
+          <label class="ctl-lbl">buf size</label>
+          <select id="buf-size" class="ctl-select" onchange="setBufSize(this.value)">
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="12" selected>12</option>
+            <option value="16">16</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <div id="semaphore-ctl" class="ctl-group hidden">
+          <label class="ctl-lbl">semaphore</label>
+          <select id="sem-count" class="ctl-select" onchange="setSemaphore(this.value)">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="rail-actions">
+        <button class="btn btn-run" id="toggle-btn" onclick="toggleSim()">
+          <span class="btn-dot"></span>run
+        </button>
+        <!-- Manual-only fault buttons -->
+        <button class="btn btn-fault hidden manual-only" onclick="injectDeadlock()">inject deadlock</button>
+        <button class="btn btn-fault hidden manual-only" id="bn-btn" onclick="toggleBottleneck()">inject bottleneck</button>
+        <button class="btn btn-fault hidden manual-only" id="race-btn" onclick="toggleRaceCondition()">inject race</button>
+        <button class="btn btn-ghost" onclick="resetAll()">reset</button>
+      </div>
+    </header>
+
+    <!-- PROCESS BAND -->
+    <section class="proc-band">
+      <div class="band-label">processes</div>
+      <div class="proc-row" id="proc-container"></div>
+    </section>
+
+    <!-- SYNC PRIMITIVES BAR (always visible) -->
+    <div class="sync-bar" id="sync-bar">
+      <div class="sync-bar-label">sync primitives</div>
+      <div class="sync-primitives" id="sync-primitives"></div>
+      <div class="sync-legend">
+        <span class="sync-leg"><span class="sync-dot sd-free"></span>free</span>
+        <span class="sync-leg"><span class="sync-dot sd-acquired"></span>acquired</span>
+        <span class="sync-leg"><span class="sync-dot sd-waiting"></span>waiting</span>
+        <span class="sync-leg"><span class="sync-dot sd-deadlock"></span>deadlock</span>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+
+      <!-- IPC CHANNEL -->
+      <div class="pane pane-ipc">
+        <div class="pane-header">
+          <span class="pane-title">ipc channel</span>
+          <div class="tab-row">
+            <button class="tab active" data-tab="pipe" onclick="switchTab('pipe')">pipe</button>
+            <button class="tab" data-tab="msgq" onclick="switchTab('msgq')">msg_queue</button>
+            <button class="tab" data-tab="shm" onclick="switchTab('shm')">shared_mem</button>
+          </div>
+        </div>
+        <!-- Pipe -->
+        <div id="tp-pipe" class="tab-panel">
+          <div class="channel-row">
+            <span class="ch-label">W</span>
+            <div class="pipe-tube"><div class="pipe-inner" id="pipe-body"></div></div>
+            <span class="ch-label">R</span>
+          </div>
+          <div class="buf-row">
+            <div class="buf-track"><div class="buf-fill" id="buf-fill"></div></div>
+            <span class="buf-pct" id="buf-pct">0%</span>
+          </div>
+          <div class="channel-meta">
+            <span id="pipe-wr">writer: —</span><span id="pipe-rd">reader: —</span>
+          </div>
+          <div class="throughput-row" id="throughput-row">
+            <div class="tp-stat"><span class="tp-k">producer rate</span><span class="tp-v" id="tp-prod">—</span></div>
+            <div class="tp-stat"><span class="tp-k">consumer rate</span><span class="tp-v" id="tp-cons">—</span></div>
+            <div class="tp-stat"><span class="tp-k">ratio P/C</span><span class="tp-v" id="tp-ratio">—</span></div>
+            <div class="tp-stat"><span class="tp-k">throughput</span><span class="tp-v" id="tp-thru">—</span></div>
+          </div>
+        </div>
+        <!-- MsgQ -->
+        <div id="tp-msgq" class="tab-panel hidden">
+          <div class="mq-layout">
+            <div class="mq-queue-wrap">
+              <div class="mq-axis-label">← FIFO head (lowest pri dequeued first)</div>
+              <div class="mq-queue" id="queue-col"></div>
+            </div>
+            <div class="mq-meta">
+              <div class="meta-row"><span class="meta-k">pri_head</span><span class="meta-v" id="mq-pri">—</span></div>
+              <div class="meta-row"><span class="meta-k">depth</span><span class="meta-v"><span id="mq-depth">0</span><span class="meta-dim">/8</span></span></div>
+              <div class="meta-row"><span class="meta-k">enqueued</span><span class="meta-v" id="mq-sent">0</span></div>
+              <div class="meta-row"><span class="meta-k">dequeued</span><span class="meta-v" id="mq-rcvd">0</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- SHM -->
+        <div id="tp-shm" class="tab-panel hidden">
+          <div class="shm-grid" id="shm-grid"></div>
+          <div class="shm-info" id="shm-detail">— click segment to inspect —</div>
+          <div class="shm-legend">
+            <span class="leg"><i class="leg-dot" style="background:#3ecf8e"></i>free</span>
+            <span class="leg"><i class="leg-dot" style="background:#5ba4f5"></i>written</span>
+            <span class="leg"><i class="leg-dot" style="background:#f5a623"></i>locked</span>
+            <span class="leg"><i class="leg-dot" style="background:#f06a6a"></i>corrupted</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIAGNOSTICS -->
+      <div class="pane pane-diag">
+        <div class="pane-header">
+          <span class="pane-title">auto-diagnostics</span>
+          <span class="diag-tick" id="diag-tick">T0000</span>
+        </div>
+        <div id="issues" class="issues-list"></div>
+        <div class="stats-grid">
+          <div class="stat"><span class="stat-n" id="s-sent">0</span><span class="stat-l">sent</span></div>
+          <div class="stat"><span class="stat-n" id="s-rcvd">0</span><span class="stat-l">received</span></div>
+          <div class="stat"><span class="stat-n" id="s-drop">0</span><span class="stat-l">dropped</span></div>
+          <div class="stat"><span class="stat-n" id="s-lat">—</span><span class="stat-l">avg latency</span></div>
+        </div>
+      </div>
+
+      <!-- EVENT LOG -->
+      <div class="pane pane-log">
+        <div class="pane-header">
+          <span class="pane-title">event log</span>
+          <button class="btn btn-ghost btn-xs" onclick="clearLog()">clear</button>
+        </div>
+        <div class="log-stream" id="log-wrap"></div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div class="pane pane-tl">
+        <div class="pane-header">
+          <span class="pane-title">cpu timeline</span>
+          <div class="tl-legend">
+            <span class="tl-leg tl-run">run</span>
+            <span class="tl-leg tl-wait">wait</span>
+            <span class="tl-leg tl-block">block</span>
+            <span class="tl-leg tl-idle">idle</span>
+          </div>
+        </div>
+        <div id="tl-container" class="tl-chart"></div>
+      </div>
+
+    </div><!-- /main-grid -->
+  </div><!-- /app -->
+
+  <script src="js/state.js"></script>
+  <script src="js/detector.js"></script>
+  <script src="js/simulation.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

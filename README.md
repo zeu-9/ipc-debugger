@@ -40,12 +40,10 @@ This project is an **Inter-Process Communication (IPC) Debugger Tool** designed 
 
 ## 📂 Project Structure
 
-```
 ├── src/              # Source code files
 ├── include/          # Header files (if any)
 ├── README.md         # Project documentation
 └── Makefile          # Build instructions (if included)
-```
 
 ---
 
@@ -53,32 +51,24 @@ This project is an **Inter-Process Communication (IPC) Debugger Tool** designed 
 
 ### Step 1: Clone the Repository
 
-```
 git clone https://github.com/your-username/your-repo-name.git
 cd your-repo-name
-```
 
 ### Step 2: Compile the Code
 
-```
 gcc filename.c -o output
-```
 
 ### Step 3: Run the Program
 
-```
 ./output
-```
 
 ---
 
 ## 📊 Example Output
 
-```
 Process 1 sending message...
 Process 2 received message...
 IPC communication successful!
-```
 
 ---
 
@@ -88,13 +78,6 @@ IPC communication successful!
 * Debugging IPC-related issues
 * Academic lab experiments
 * Understanding process communication
-
----
-
-## 👥 Contributors
-
-* Your Name
-* Teammate Name(s)
 
 ---
 
